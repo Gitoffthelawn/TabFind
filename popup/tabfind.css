@@ -1,5 +1,9 @@
 html, body {
 	margin: 0;
+	padding: 0;
+	min-width: 300px;
+	max-width: 780px;
+	overflow: hidden;
 }
 
 body.narrow {
@@ -141,19 +145,7 @@ body.narrow #tabs-all, #tab-count {
 	white-space: nowrap; 
 	overflow: hidden;
 	text-overflow: ellipsis;
-}
-
-body.narrow #tabs-list li span {
-	width: 225px;
-}
-body.normal #tabs-list li span {
-	width: 325px;
-}
-body.wide #tabs-list li span {
-	width: 425px;
-}
-body.extraWide #tabs-list li span {
-	width: 525px;
+	width: calc(100% - 50px);
 }
 
 #tabs-list.small li span {
@@ -176,7 +168,7 @@ body.extraWide #tabs-list li span {
 	width: 22px;
 	height: 22px;
 	position: absolute;
-	top: 6px;
+	top: 3px;
 	right: 0;
 	background-color: inherit;
 	cursor: pointer;
@@ -296,4 +288,20 @@ body.extraWide #tabs-list li span {
 
 #confirm-btn:hover, #cancel-btn:hover {
 	background-color: #ebf6f9;
+}
+
+/* Resize Bar */
+#resize-handle {
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 10px;
+	cursor: w-resize;
+	background-color: transparent;
+	transition: background-color 0.2s;
+}
+
+#resize-handle:hover {
+	background-color: rgba(0, 0, 0, 0.1);
 }
