@@ -26,6 +26,10 @@ body.extraWide {
 	visibility: hidden;
 }
 
+.highlight {
+	background-color: #ebf6f9;
+}
+
 /* Header Section */
 .tabs-header {
 	padding: 10px;
@@ -330,4 +334,24 @@ body.narrow #tabs-all, #tab-count {
 
 #resize-handle:hover {
 	background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Context Menu */
+#context-menu {
+	position: absolute;
+	width: 200px;
+	z-index: 1000;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	background: white;
+	box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+}
+
+.menu-item {
+	padding: 8px 12px;
+	cursor: pointer;
+}
+
+.menu-item:hover {
+	background-color: #ebf6f9;
 }
