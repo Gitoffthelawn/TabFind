@@ -1,12 +1,15 @@
 const TABS_ALL = 0;
 const TABS_DUPLICATE = 1;
 
-var currentState;
-var search = '';
+let currentState;
+let search = '';
 
-var findDups;
-var searchBy;
-var allWindows;
+let findDups;
+let searchBy;
+let allWindows;
+
+let closeBatchSize;
+let closeDelay;
 
 /**
  * retrieves all windows with tabs
@@ -61,13 +64,14 @@ async function closeAllTabs() {
 		}
 	}
 
-	const batchSize = 20;
+	const batchSize = parseInt(closeBatchSize);
+	const delay = parseInt(closeDelay);
 	for (let i = 0; i < tabIds.length; i += batchSize) {
 		const batchIds = tabIds.slice(i, i + batchSize);
 		await closeTab(batchIds);
 
 		// Adding a small delay between each batch to help prevent Firefox freezing
-		await new Promise(resolve => setTimeout(resolve, 100));
+		await new Promise(resolve => setTimeout(resolve, delay));
 	}
 }
 
@@ -358,8 +362,10 @@ async function init () {
 	let promisePopupWidth = browser.storage.local.get("popupWidth");
 	let promiseDefaultTab = browser.storage.local.get("defaultTab");
 	let promiseAllWindows = browser.storage.local.get("allWindows");
+	let promiseCloseBatchSize = browser.storage.local.get("closeBatchSize");
+	let promiseCloseDelay = browser.storage.local.get("closeDelay");
 
-	const values = await Promise.all([promiseTextSize, promiseFindDups, promiseSearchBy, promisePopupWidth, promiseDefaultTab, promiseAllWindows]);
+	const values = await Promise.all([promiseTextSize, promiseFindDups, promiseSearchBy, promisePopupWidth, promiseDefaultTab, promiseAllWindows, promiseCloseBatchSize, promiseCloseDelay]);
 	
 	let textSize = values[0].textSize ?? "small";
 	document.getElementById('tabs-list').classList.add(textSize);
@@ -371,9 +377,12 @@ async function init () {
 	let popupWidth = values[3].popupWidth ?? "normal";
 	document.body.classList.add(popupWidth);
 
+	let defaultTab = values[4].defaultTab ?? TABS_ALL;
 	allWindows = values[5].allWindows ?? "false";
 
-	let defaultTab = values[4].defaultTab ?? TABS_ALL;
+	closeBatchSize = values[6].closeBatchSize ?? '20';
+	closeDelay = values[7].closeDelay ?? '100';
+
 	makeTabActive(defaultTab);
 	updateTabCount();
 	reloadTabList(true);
@@ -395,14 +404,14 @@ document.addEventListener("click", async (e) => {
 	}
 	
 	else if (e.target.classList.contains('switch-tabs')) {
-		var tabId = +e.target.getAttribute('href');
+		const tabId = +e.target.getAttribute('href');
 		
 		await switchTab(tabId);
 		reloadTabList();
 	}
 	
 	else if (e.target.classList.contains('delete-btn')) {
-		var tabId = +e.target.getAttribute('href');
+		const tabId = +e.target.getAttribute('href');
 		
 		await closeTab(tabId);
 		reloadTabList();

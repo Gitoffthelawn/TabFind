@@ -1,3 +1,33 @@
+function restrictNumberInputs() {
+	const numberInputs = document.querySelectorAll('input[type="number"]');
+
+	numberInputs.forEach(input => {
+    	input.addEventListener('input', (e) => {
+    		const val = parseInt(e.target.value);
+    		const min = parseInt(input.min);
+    		const max = parseInt(input.max);
+        
+        	if (val > max) {
+        		e.target.value = max;
+    		}
+			console.log(val, typeof val)
+			if (val < min || isNaN(val)) {
+        		e.target.value = min;
+			}
+   		});
+
+    	input.addEventListener('keydown', (e) => {
+			const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter'];
+    		if (allowedKeys.includes(e.key)) return;
+
+			const isNum = /[0-9]/.test(e.key);
+    		if (isNum) return;
+
+			e.preventDefault();
+    	});
+  	});
+}
+
 function retrieveOptions() {
 	// get textSize
 	browser.storage.local.get("textSize").then((result) => {
@@ -70,6 +100,29 @@ function retrieveOptions() {
 			}
 		}
 	});
+
+	// get closeBatchSize
+	browser.storage.local.get("closeBatchSize").then((result) => {
+		let opt = document.getElementById("closeBatchSize");
+		if (result.closeBatchSize && result.closeBatchSize !== '') {
+			opt.value = result.closeBatchSize;
+		}
+		else {
+			opt.value = '20';
+		}
+
+	});
+
+	// get closeDelay
+	browser.storage.local.get("closeDelay").then((result) => {
+		let opt = document.getElementById("closeDelay");
+		if (result.closeDelay && result.closeDelay !== '') {
+			opt.value = result.closeDelay;
+		}
+		else {
+			opt.value = '100';
+		}
+	});
 }
 
 function saveRadioButtons(optionName, defaultValue) {
@@ -120,9 +173,24 @@ function saveAllWindows(e) {
 	saveRadioButtons("allWindows", "false");
 }
 
+function saveCloseBatchSize(e) {
+	e.preventDefault();
+
+	let selectedOption = document.getElementById("closeBatchSize").value;
+	browser.storage.local.set({ closeBatchSize: selectedOption });
+}
+
+function saveCloseDelay(e) {
+	e.preventDefault();
+
+	let selectedOption = document.getElementById("closeDelay").value;
+	browser.storage.local.set({ closeDelay: selectedOption });
+}
+
 function init() {
 	let options;
 	
+	document.addEventListener("DOMContentLoaded", restrictNumberInputs);
 	document.addEventListener("DOMContentLoaded", retrieveOptions);
 	
 	// event listeners for textSize
@@ -163,6 +231,12 @@ function init() {
 	for (let opt of options) {
 		opt.addEventListener("change", saveAllWindows);
 	}
+	
+	// event listeners for closeBatchSize
+	document.getElementById("closeBatchSize").addEventListener("input", saveCloseBatchSize);
+
+	// event listeners for closeDelay
+	document.getElementById("closeDelay").addEventListener("input", saveCloseDelay);
 }
 
 init();
