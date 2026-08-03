@@ -6,6 +6,7 @@ var search = '';
 
 var findDups;
 var searchBy;
+var allWindows;
 
 /**
  * retrieves all windows with tabs
@@ -15,17 +16,27 @@ function getWindows() {
 }
 
 /**
- * retrieves all tabs for the current window
+ * retrieves all tabs for the current window or all windows (based on setting)
  */
-function getTabs() {
-	return browser.tabs.query({currentWindow: true});
+async function getTabs() {
+	if (allWindows == "true") {
+		let windows = await getWindows();
+		windows.sort((a, b) => a.id - b.id);
+		return windows;
+	}
+	else {
+		const window = await browser.windows.getCurrent({ populate: true });
+		return [window];
+	}
 }
 
 /**
  * Switch to the given tab
  */
 async function switchTab(tabId) {
-	return browser.tabs.update(tabId, { active: true });
+	const tab = await browser.tabs.get(tabId);
+	await browser.tabs.update(tabId, { active: true });
+	await browser.windows.update(tab.windowId, { focused: true });
 }
 
 /**
@@ -39,12 +50,14 @@ async function closeTab(tabId) {
  * Close all tab(s) based on the search term
  */
 async function closeAllTabs() {
-	var tabs = await getTabs();
+	const windows = await getTabs();
 
 	let tabIds = [];
-	for (let tab of tabs) {
-		if (checkSearch(tab)) {
-			tabIds.push(tab.id)
+	for (let win of windows) {
+		for (let tab of win.tabs) {
+			if (checkSearch(tab)) {
+				tabIds.push(tab.id)
+			}
 		}
 	}
 
@@ -99,21 +112,20 @@ function makeTabActive(tab) {
 /**
  * update tab count
  */
-function updateTabCount() {
-	getWindows().then((windows) => {
-		let totalTabs = 0, currentTabs = 0;
-		
-		for (let win of windows) {
-			totalTabs += win.tabs.length;
-			if (win.focused) {
-				currentTabs = win.tabs.length;
-			}
+async function updateTabCount() {
+	const windows = await getWindows();
+	let totalTabs = 0, currentTabs = 0;
+	
+	for (let win of windows) {
+		totalTabs += win.tabs.length;
+		if (win.focused) {
+			currentTabs = win.tabs.length;
 		}
-		
-		let tabCount = document.getElementById('tab-count');
-		tabCount.textContent = `${currentTabs} / ${totalTabs} [${windows.length}]`;
-		tabCount.setAttribute('title', 'tabs in current window / all tabs [number of windows]');
-  });
+	}
+	
+	let tabCount = document.getElementById('tab-count');
+	tabCount.textContent = `${currentTabs} / ${totalTabs} [${windows.length}]`;
+	tabCount.setAttribute('title', 'tabs in current window / all tabs [number of windows]');
 }
 
 /**
@@ -184,29 +196,58 @@ function checkSearch(tab) {
 	
 	return search === '' || searchVal.toLowerCase().includes(search.toLowerCase());
 }
-function listAllTabs(scrollToActiveTab) {
-	getTabs().then((tabs) => {
-		let tabsList = document.getElementById('tabs-list');
-		tabsList.textContent = '';
-		
-		for (let tab of tabs) {
+
+async function listAllTabs(scrollToActiveTab) {
+	const windows = await getTabs();
+	
+	let tabsList = document.getElementById('tabs-list');
+	tabsList.textContent = '';
+
+	let winCount = 1;
+	for (let win of windows) {
+		let tabContent = document.createElement('div');
+		tabContent.classList.add('tab-sub-list');
+
+		for (let tab of win.tabs) {
 			if (checkSearch(tab)) {
-				tabsList.appendChild(buildListItemFromTab(tab));
+				tabContent.appendChild(buildListItemFromTab(tab));
 			}
 		}
-		
-		let deleteAll = document.getElementById('delete-all-btn');
-		if (tabsList.childElementCount === 0) {
-			deleteAll.classList.add('disabled');
-		}
-		else {
-			deleteAll.classList.remove('disabled');
+
+		if (tabContent.hasChildNodes()) {
+			if (windows.length > 1) {
+				let winContent = document.createElement('div');
+				winContent.classList.add('window-list');
+				winContent.textContent = `Window ${winCount}`;
+				if (win.focused) {
+					winContent.classList.add('active');
+				}
+
+	
+				tabsList.appendChild(winContent);
+				tabsList.appendChild(tabContent);
+			}
+			else {
+				while (tabContent.firstChild) {
+					tabsList.appendChild(tabContent.firstChild);
+				}
+			}
 		}
 
-		if (scrollToActiveTab) {
-			ScrollToActiveTab(tabsList);
-		}
-	});
+		winCount++;
+	}
+	
+	let deleteAll = document.getElementById('delete-all-btn');
+	if (tabsList.childElementCount === 0) {
+		deleteAll.classList.add('disabled');
+	}
+	else {
+		deleteAll.classList.remove('disabled');
+	}
+
+	if (scrollToActiveTab) {
+		ScrollToActiveTab(tabsList);
+	}
 }
 
 /**
@@ -233,52 +274,55 @@ function checkDup(duplicates, tab) {
 		duplicates[searchVal] = [tab];
 	}
 }
-function listDuplicateTabs(scrollToActiveTab) {
-	getTabs().then((tabs) => {
-		let duplicates = {};
-		
-		for (let tab of tabs) {
+async function listDuplicateTabs(scrollToActiveTab) {
+	const windows = await getTabs();
+	let duplicates = {};
+	
+	for (let win of windows) {
+		for (let tab of win.tabs) {
 			checkDup(duplicates, tab);
 		}
+	}
+	
+	let tabsList = document.getElementById('tabs-list');
+	tabsList.textContent = '';
+	
+	for (let key in duplicates) {
+		let tabs = duplicates[key];
 		
-		let tabsList = document.getElementById('tabs-list');
-		tabsList.textContent = '';
-		
-		for (let key in duplicates) {
-			let tabs = duplicates[key];
-			
-			if (tabs.length > 1) {
-				for (let tab of tabs) {
-					tabsList.appendChild(buildListItemFromTab(tab));
-				}
+		if (tabs.length > 1) {
+			for (let tab of tabs) {
+				tabsList.appendChild(buildListItemFromTab(tab));
 			}
 		}
+	}
 
-		let clearDuplicates = document.getElementById('clear-duplicates');
-		if (tabsList.childElementCount === 0) {
-			clearDuplicates.classList.add('disabled');
-		}
-		else {
-			clearDuplicates.classList.remove('disabled');
-		}
+	let clearDuplicates = document.getElementById('clear-duplicates');
+	if (tabsList.childElementCount === 0) {
+		clearDuplicates.classList.add('disabled');
+	}
+	else {
+		clearDuplicates.classList.remove('disabled');
+	}
 
-		if (scrollToActiveTab) {
-			ScrollToActiveTab(tabsList);
-		}
-	});
+	if (scrollToActiveTab) {
+		ScrollToActiveTab(tabsList);
+	}
 }
 
 /**
  * Close duplicate tab(s)
  */
 async function closeDuplicateTabs() {
-	let tabs = await getTabs();
+	const windows = await getTabs();
 	
 	let duplicates = {};
-	for (let tab of tabs) {
-		checkDup(duplicates, tab);
+	for (let win of windows) {
+		for (let tab of win.tabs) {
+			checkDup(duplicates, tab);
+		}
 	}
-	
+
 	let tabIds = [];
 	for (let key in duplicates) {
 		let tabs = duplicates[key];
@@ -295,10 +339,10 @@ async function closeDuplicateTabs() {
 	await closeTab(tabIds);
 }
 
-function init () {
+async function init () {
 	document.getElementById('search-input').addEventListener("input", (e) => {
 		search = e.target.value;
-		listAllTabs();
+		reloadTabList();
 	});
 
 	let promiseTextSize = browser.storage.local.get("textSize");
@@ -306,23 +350,26 @@ function init () {
 	let promiseSearchBy = browser.storage.local.get("searchBy");
 	let promisePopupWidth = browser.storage.local.get("popupWidth");
 	let promiseDefaultTab = browser.storage.local.get("defaultTab");
+	let promiseAllWindows = browser.storage.local.get("allWindows");
 
-	Promise.all([promiseTextSize, promiseFindDups, promiseSearchBy, promisePopupWidth, promiseDefaultTab]).then((values) => {
-		let textSize = values[0].textSize ?? "small";
-		document.getElementById('tabs-list').classList.add(textSize);
+	const values = await Promise.all([promiseTextSize, promiseFindDups, promiseSearchBy, promisePopupWidth, promiseDefaultTab, promiseAllWindows]);
+	
+	let textSize = values[0].textSize ?? "small";
+	document.getElementById('tabs-list').classList.add(textSize);
 
-		findDups = values[1].findDups ?? "both";
+	findDups = values[1].findDups ?? "both";
 
-		searchBy = values[2].searchBy ?? "both";
+	searchBy = values[2].searchBy ?? "both";
 
-		let popupWidth = values[3].popupWidth ?? "normal";
-		document.body.classList.add(popupWidth);
+	let popupWidth = values[3].popupWidth ?? "normal";
+	document.body.classList.add(popupWidth);
 
-		let defaultTab = values[4].defaultTab ?? TABS_ALL;
-		makeTabActive(defaultTab);
-		updateTabCount();
-		reloadTabList(true);
-	});
+	allWindows = values[5].allWindows ?? "false";
+
+	let defaultTab = values[4].defaultTab ?? TABS_ALL;
+	makeTabActive(defaultTab);
+	updateTabCount();
+	reloadTabList(true);
 }
 document.addEventListener("DOMContentLoaded", init);
 

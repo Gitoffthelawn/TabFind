@@ -47,41 +47,65 @@ async function updateBadgeColor(badgeColor) {
 	browser.browserAction.setBadgeBackgroundColor({'color': badgeColor});
 }
 
-function updateBadgeCount(tabId, oldWindowId, isOnRemoved) {
-	browser.windows.getAll({ populate: true })
-	.then(async (windows) => {
-		// Retrieve badge count from storage
-		let result = await browser.storage.local.get("badgeCount");
-		let badgeCount = result.badgeCount ?? 'all';
-			
-		for (let win of windows) {
-			let tabs = win.tabs;
+async function updateBadgeCount(tabId, oldWindowId, isOnRemoved) {
+	const windows = await browser.windows.getAll({ populate: true });
 
-			// onRemoved (and onDetached) fires too early and the count is one too many.
-			// see https://bugzilla.mozilla.org/show_bug.cgi?id=1396758
-			if (isOnRemoved && tabId) {
-				if (oldWindowId && oldWindowId == win.id) {
-					tabs = tabs.filter((t) => { 
-						return t.id !== tabId;
-					});
-				}
-				else if (oldWindowId == null) {
-					tabs = tabs.filter((t) => {
-						return t.id !== tabId;
-					});
-				}
+	// Retrieve badge count from storage
+	let badgeResult = await browser.storage.local.get("badgeCount");
+	let badgeCount = badgeResult.badgeCount ?? 'current';
+
+	let allWinResult = await browser.storage.local.get("allWindows");
+	let allWindows = allWinResult.allWindows ?? 'false';
+	let allTabs = [];
+
+	for (let win of windows) {
+		let tabs = win.tabs;
+
+		// onRemoved (and onDetached) fires too early and the count is one too many.
+		// see https://bugzilla.mozilla.org/show_bug.cgi?id=1396758
+		if (isOnRemoved && tabId) {
+			if (oldWindowId && oldWindowId == win.id) {
+				tabs = tabs.filter((t) => { 
+					return t.id !== tabId;
+				});
 			}
-			
-			let length = Math.max(tabs.length, 1);
+			else if (oldWindowId == null) {
+				tabs = tabs.filter((t) => {
+					return t.id !== tabId;
+				});
+			}
+		}
+		
+		let length = Math.max(tabs.length, 1);
 
-			// Set badge count
+		// Set badge count
+		if (badgeCount == 'current') {
 			let badgeText = length.toString();
-			if (badgeCount == 'duplicates') {
-				badgeText = await countDuplicateTabs(tabs);
-			}
 			browser.browserAction.setBadgeText({text: badgeText, windowId: win.id });
 		}
-	});
+		else if (badgeCount == 'duplicates' && allWindows == 'false') {
+			let badgeText = await countDuplicateTabs(tabs);
+			browser.browserAction.setBadgeText({text: badgeText, windowId: win.id });
+		}
+		else {
+			// Aggregate tabs to count later based on settings
+			allTabs = allTabs.concat(tabs);
+		}
+	}
+
+	// Set badge count using allTabs based on settings
+	if (badgeCount == 'all') {
+		let badgeText = allTabs.length.toString();
+		for (let win of windows) {
+			browser.browserAction.setBadgeText({text: badgeText, windowId: win.id });
+		}
+	}
+	else if (badgeCount == 'duplicates' && allWindows == 'true') {
+		let badgeText = await countDuplicateTabs(allTabs);
+		for (let win of windows) {
+			browser.browserAction.setBadgeText({text: badgeText, windowId: win.id });
+		}
+	}
 }
 
 browser.storage.onChanged.addListener((changes, area) => {
@@ -90,6 +114,14 @@ browser.storage.onChanged.addListener((changes, area) => {
 	}
 
 	if (changes['badgeCount']) {
+		updateBadgeCount(null, null, false);
+	}
+
+	if (changes['findDups']) {
+		updateBadgeCount(null, null, false);
+	}
+
+	if (changes['allWindows']) {
 		updateBadgeCount(null, null, false);
 	}
 });

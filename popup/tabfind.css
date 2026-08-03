@@ -103,6 +103,32 @@ body.narrow #tabs-all, #tab-count {
 	font-size: 20px;
 }
 
+.window-list {
+	position: relative;
+	display: block;
+	padding: 2px;
+	padding-left: 10px;
+	text-decoration: underline;
+	text-underline-offset: 5px;
+}
+.window-list.active {
+	background-color: inherit;
+	font-weight: bold;
+}
+#tabs-list.small .window-list {
+	height: 22px;
+}
+#tabs-list.medium .window-list {
+	height: 26px;
+}
+#tabs-list.large .window-list {
+	height: 30px;
+}
+
+.tab-sub-list {
+	padding-left: 15px;
+}
+
 #tabs-list li {
 	position: relative;
 	display: block;

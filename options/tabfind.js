@@ -19,7 +19,7 @@ function retrieveOptions() {
 	// get badgeCount
 	browser.storage.local.get("badgeCount").then((result) => {
 		let options = document.getElementsByName("badgeCount");
-		let selectedOption = result.badgeCount ?? "all";
+		let selectedOption = result.badgeCount ?? "current";
 		for (let opt of options) {
 			if (opt.value === selectedOption) {
 				opt.checked = true;
@@ -59,6 +59,17 @@ function retrieveOptions() {
 			}
 		}
 	});
+
+	// get allWindows
+	browser.storage.local.get("allWindows").then((result) => {
+		let options = document.getElementsByName("allWindows");
+		let selectedOption = result.allWindows ?? "false";
+		for (let opt of options) {
+			if (opt.value === selectedOption) {
+				opt.checked = true;
+			}
+		}
+	});
 }
 
 function saveRadioButtons(optionName, defaultValue) {
@@ -86,7 +97,7 @@ function saveBadgeColor(e) {
 
 function saveBadgeCount(e) {
 	e.preventDefault();
-	saveRadioButtons("badgeCount", "all");
+	saveRadioButtons("badgeCount", "current");
 }
 
 function saveFindDups(e) {
@@ -102,6 +113,11 @@ function saveSearchBy(e) {
 function savePopupWidth(e) {
 	e.preventDefault();
 	saveRadioButtons("popupWidth", "normal");
+}
+
+function saveAllWindows(e) {
+	e.preventDefault();
+	saveRadioButtons("allWindows", "false");
 }
 
 function init() {
@@ -140,6 +156,12 @@ function init() {
 	options = document.getElementsByName("popupWidth");
 	for (let opt of options) {
 		opt.addEventListener("change", savePopupWidth);
+	}
+
+	// event listeners for allWindows
+	options = document.getElementsByName("allWindows");
+	for (let opt of options) {
+		opt.addEventListener("change", saveAllWindows);
 	}
 }
 
