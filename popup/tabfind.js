@@ -61,7 +61,14 @@ async function closeAllTabs() {
 		}
 	}
 
-	await closeTab(tabIds);
+	const batchSize = 20;
+	for (let i = 0; i < tabIds.length; i += batchSize) {
+		const batchIds = tabIds.slice(i, i + batchSize);
+		await closeTab(batchIds);
+
+		// Adding a small delay between each batch to help prevent Firefox freezing
+		await new Promise(resolve => setTimeout(resolve, 100));
+	}
 }
 
 /**
