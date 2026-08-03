@@ -181,9 +181,19 @@ function buildListItemFromTab(tab) {
  * Scroll to the active tab
  */
 function ScrollToActiveTab(tabsList) {
-	let activeTab = tabsList.getElementsByClassName("active")[0];
-	if (activeTab) {
-		activeTab.scrollIntoView();
+	if (allWindows == "true") {
+		const activeElements = Array.from(document.querySelectorAll('.window-list.active, .switch-tabs.active'));
+		const activeWindowIndex = activeElements.findIndex(el => el.classList.contains('window-list'));
+		const activeTab = activeElements[activeWindowIndex + 1];
+		if (activeTab) {
+			activeTab.scrollIntoView();
+		}
+	}
+	else {
+		const activeTab = tabsList.getElementsByClassName("active")[0];
+		if (activeTab) {
+			activeTab.scrollIntoView();
+		}
 	}
 }
 
